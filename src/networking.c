@@ -3262,6 +3262,7 @@ int handleClientsWithPendingReadsUsingThreads(void) {
     int item_id = 0;
     while((ln = listNext(&li))) {
         client *c = listNodeValue(ln);
+        //1 链接多 2，请求数据多，cpu占用比较高 3，核心数
         int target_id = item_id % server.io_threads_num;
         listAddNodeTail(io_threads_list[target_id],c);
         item_id++;

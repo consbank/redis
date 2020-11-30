@@ -1422,6 +1422,9 @@ int htNeedsResize(dict *dict) {
 
     size = dictSlots(dict);
     used = dictSize(dict);
+    /*缩容条件：
+    * size 大于 初始值4， 且 used小于0.1size
+    */
     return (size > DICT_HT_INITIAL_SIZE &&
             (used*100/size < HASHTABLE_MIN_FILL));
 }
@@ -2119,7 +2122,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
      * case we keep track of the number of events we are processing, since
      * processEventsWhileBlocked() wants to stop ASAP if there are no longer
      * events to handle. */
-    if (ProcessingEventsWhileBlocked) {
+    if (ProcessingEventsWhileBlocked) { //rdb aof script  的时候，会block
         uint64_t processed = 0;
         processed += handleClientsWithPendingReadsUsingThreads();
         processed += tlsProcessPendingData();

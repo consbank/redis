@@ -47,12 +47,12 @@
 typedef struct dictEntry {
     void *key;
     union {
-        void *val;
+        void *val;  //string set list...
         uint64_t u64;
         int64_t s64;
         double d;
     } v;
-    struct dictEntry *next;
+    struct dictEntry *next;//头插法，java里使用的尾插法
 } dictEntry;
 
 typedef struct dictType {
