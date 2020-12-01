@@ -1600,6 +1600,10 @@ void zaddGenericCommand(client *c, int flags) {
     zobj = lookupKeyWrite(c->db,key);
     if (zobj == NULL) {
         if (xx) goto reply_to_client; /* No key + XX option: nothing to do. */
+        /**
+         * zset-max-ziplist-entries 128
+         * zset-max-ziplist-value 64
+         */
         if (server.zset_max_ziplist_entries == 0 ||
             server.zset_max_ziplist_value < sdslen(c->argv[scoreidx+1]->ptr))
         {

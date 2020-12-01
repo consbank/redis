@@ -1984,6 +1984,8 @@ void readQueryFromClient(connection *conn) {
 
     qblen = sdslen(c->querybuf);
     if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
+    //可以查看 c->querybuf  查看协议
+    //对于客户端，可以sudo tcpdump -i lo0 host 127.0.0.1 and port 6379 -XX  查看交互的包
     c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
     nread = connRead(c->conn, c->querybuf+qblen, readlen);
     if (nread == -1) {
