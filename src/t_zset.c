@@ -84,8 +84,8 @@ zskiplist *zslCreate(void) {
     zsl = zmalloc(sizeof(*zsl));
     zsl->level = 1;
     zsl->length = 0;
-    zsl->header = zslCreateNode(ZSKIPLIST_MAXLEVEL,0,NULL);
-    for (j = 0; j < ZSKIPLIST_MAXLEVEL; j++) {
+    zsl->header = zslCreateNode(ZSKIPLIST_MAXLEVEL,0,NULL);//创建头节点
+    for (j = 0; j < ZSKIPLIST_MAXLEVEL; j++) {//32层先创建出来
         zsl->header->level[j].forward = NULL;
         zsl->header->level[j].span = 0;
     }
@@ -107,7 +107,7 @@ void zslFree(zskiplist *zsl) {
     zskiplistNode *node = zsl->header->level[0].forward, *next;
 
     zfree(zsl->header);
-    while(node) {
+    while(node) {//从第1层依次freenode
         next = node->level[0].forward;
         zslFreeNode(node);
         node = next;
@@ -130,11 +130,13 @@ int zslRandomLevel(void) {
  * exist (up to the caller to enforce that). The skiplist takes ownership
  * of the passed SDS string 'ele'. */
 zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
+    //update 存储每一次插入节点的最近左节点
+    //rank 存储每一层到update【i】节点的span数目
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
     unsigned int rank[ZSKIPLIST_MAXLEVEL];
     int i, level;
 
-    serverAssert(!isnan(score));
+    serverAssert(!isnan(score)); //nan = not a number
     x = zsl->header;
     for (i = zsl->level-1; i >= 0; i--) {
         /* store rank that is crossed to reach the insert position */
@@ -142,12 +144,12 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
         while (x->level[i].forward &&
                 (x->level[i].forward->score < score ||
                     (x->level[i].forward->score == score &&
-                    sdscmp(x->level[i].forward->ele,ele) < 0)))
+                    sdscmp(x->level[i].forward->ele,ele) < 0)))//可以看出score是可以相等的，score相等的时候，比较ele
         {
             rank[i] += x->level[i].span;
             x = x->level[i].forward;
         }
-        update[i] = x;
+        update[i] = x;//比当前score大的最近的node，或者score相等，比较ele
     }
     /* we assume the element is not already inside, since we allow duplicated
      * scores, reinserting the same element should never happen since the
@@ -172,7 +174,8 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
         update[i]->level[i].span = (rank[0] - rank[i]) + 1;
     }
 
-    /* increment span for untouched levels */
+    /* increment span for untouched levels 
+    生成的level比当前最大level小，更新其他层的span*/
     for (i = level; i < zsl->level; i++) {
         update[i]->level[i].span++;
     }

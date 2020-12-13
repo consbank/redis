@@ -67,8 +67,8 @@ typedef struct dictType {
 /* This is our hash table structure. Every dictionary has two of this as we
  * implement incremental rehashing, for the old to the new table. */
 typedef struct dictht {
-    dictEntry **table;
-    unsigned long size;
+    dictEntry **table;//哈希表数组 == dictEntry *table[]
+    unsigned long size;//哈希表的大小
     unsigned long sizemask;
     unsigned long used;
 } dictht;
@@ -137,7 +137,7 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
         (d)->type->keyCompare((d)->privdata, key1, key2) : \
         (key1) == (key2))
 
-#define dictHashKey(d, key) (d)->type->hashFunction(key)
+#define dictHashKey(d, key) (d)->type->hashFunction(key)//计算哈希值的函数
 #define dictGetKey(he) ((he)->key)
 #define dictGetVal(he) ((he)->v.val)
 #define dictGetSignedIntegerVal(he) ((he)->v.s64)

@@ -131,7 +131,7 @@ int _dictInit(dict *d, dictType *type,
 }
 
 /* Resize the table to the minimal size that contains all the elements,
- * but with the invariant of a USED/BUCKETS ratio near to <= 1 
+ * but with the invariant of a USED/  ratio near to <= 1 
  * 
  * 缩容操作
  * */
@@ -141,7 +141,7 @@ int dictResize(dict *d)
 
     if (!dict_can_resize || dictIsRehashing(d)) return DICT_ERR;
     minimal = d->ht[0].used;
-    if (minimal < DICT_HT_INITIAL_SIZE)
+    if (minimal < DICT_HT_INITIAL_SIZE) 
         minimal = DICT_HT_INITIAL_SIZE;
     return dictExpand(d, minimal);
 }
@@ -175,7 +175,7 @@ int dictExpand(dict *d, unsigned long size)
 
     /* Prepare a second hash table for incremental rehashing */
     d->ht[1] = n;
-    d->rehashidx = 0;
+    d->rehashidx = 0;//开启rehash开关
     return DICT_OK;
 }
 
@@ -210,7 +210,7 @@ int dictRehash(dict *d, int n) {
             nextde = de->next;
             /* Get the index in the new hash table */
             h = dictHashKey(d, de->key) & d->ht[1].sizemask;
-            de->next = d->ht[1].table[h];
+            de->next = d->ht[1].table[h];//table 数组？  
             d->ht[1].table[h] = de;
             d->ht[0].used--;
             d->ht[1].used++;
@@ -245,7 +245,8 @@ long long timeInMilliseconds(void) {
  * depends on the running time of dictRehash(d,100).*/
 //渐进式hash
 //1） 每操作一次 rehash
-//2） 每ms 100个数组槽位
+//2） 每ms 100个数组槽位   
+// 会加在service 定时事件里？
 int dictRehashMilliseconds(dict *d, int ms) {
     long long start = timeInMilliseconds();
     int rehashes = 0;
@@ -266,7 +267,7 @@ int dictRehashMilliseconds(dict *d, int ms) {
  * dictionary so that the hash table automatically migrates from H1 to H2
  * while it is actively used. */
 static void _dictRehashStep(dict *d) {
-    if (d->iterators == 0) dictRehash(d,1);
+    if (d->iterators == 0) dictRehash(d,1);//没有安全迭代器的时候，增删改才rehash一步
 }
 
 /* Add an element to the target hash table */
@@ -337,7 +338,7 @@ int dictReplace(dict *d, void *key, void *val)
     /* Try to add the element. If the key
      * does not exists dictAdd will succeed. */
     entry = dictAddRaw(d,key,&existing);
-    if (entry) {
+    if (entry) {//不存在，添加成功
         dictSetVal(d, entry, val);
         return 1;
     }
@@ -401,7 +402,7 @@ static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
             prevHe = he;
             he = he->next;
         }
-        if (!dictIsRehashing(d)) break;
+        if (!dictIsRehashing(d)) break;  //如果没有rehash就不用去ht[1]里找了
     }
     return NULL; /* not found */
 }
@@ -454,7 +455,7 @@ int _dictClear(dict *d, dictht *ht, void(callback)(void *)) {
     for (i = 0; i < ht->size && ht->used > 0; i++) {
         dictEntry *he, *nextHe;
 
-        if (callback && (i & 65535) == 0) callback(d->privdata);
+        if (callback && (i & 65535) == 0) callback(d->privdata);//privdata 都有啥，啥时候赋值的   i&65535干啥的
 
         if ((he = ht->table[i]) == NULL) continue;
         while(he) {
@@ -608,7 +609,7 @@ void dictReleaseIterator(dictIterator *iter)
         if (iter->safe)
             iter->d->iterators--;
         else
-            assert(iter->fingerprint == dictFingerprint(iter->d));
+            assert(iter->fingerprint == dictFingerprint(iter->d));//assert 含义是？？？
     }
     zfree(iter);
 }
@@ -643,7 +644,8 @@ dictEntry *dictGetRandomKey(dict *d)
     /* Now we found a non empty bucket, but it is a linked
      * list and we need to get a random element from the list.
      * The only sane way to do so is counting the elements and
-     * select a random index. */
+     * select a random index. 
+     * 链表遍历O(n)，统计长度，再 找位置*/
     listlen = 0;
     orighe = he;
     while(he) {
@@ -713,7 +715,7 @@ unsigned int dictGetSomeKeys(dict *d, dictEntry **des, unsigned int count) {
                  * table, there will be no elements in both tables up to
                  * the current rehashing index, so we jump if possible.
                  * (this happens when going from big to small table). */
-                if (i >= d->ht[1].size)
+                if (i >= d->ht[1].size) //？？？   i<rehashidx 的时候，为啥回大于ht1的size
                     i = d->rehashidx;
                 else
                     continue;
@@ -883,7 +885,7 @@ unsigned long dictScan(dict *d,
      * This is needed in case the scan callback tries to do dictFind or alike. */
     d->iterators++;
 
-    if (!dictIsRehashing(d)) {
+    if (!dictIsRehashing(d)) {//如果没有进行rehash,只处理ht[0]，字典大小不变的情况
         t0 = &(d->ht[0]);
         m0 = t0->sizemask;
 
@@ -892,7 +894,7 @@ unsigned long dictScan(dict *d,
         de = t0->table[v & m0];
         while (de) {
             next = de->next;
-            fn(privdata, de);
+            fn(privdata, de);//将这个slot的链表数据全部入队，准备返回给客户端。
             de = next;
         }
 
@@ -900,7 +902,7 @@ unsigned long dictScan(dict *d,
          * operates on the masked bits */
         v |= ~m0;
 
-        /* Increment the reverse cursor */
+        /* Increment the reverse cursor 高位加1，00->10->01->11 */
         v = rev(v);
         v++;
         v = rev(v);
@@ -929,7 +931,7 @@ unsigned long dictScan(dict *d,
 
         /* Iterate over indices in larger table that are the expansion
          * of the index pointed to by the cursor in the smaller table */
-        do {
+        do {//小表的某个index，分布到大表的多个index都迭代一遍
             /* Emit entries at cursor */
             if (bucketfn) bucketfn(privdata, &t1->table[v & m1]);
             de = t1->table[v & m1];
@@ -1008,8 +1010,8 @@ static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **e
     /* Expand the hash table if needed */
     if (_dictExpandIfNeeded(d) == DICT_ERR)
         return -1;
-    for (table = 0; table <= 1; table++) {
-        idx = hash & d->ht[table].sizemask;
+    for (table = 0; table <= 1; table++) {//遍历ht[0] ht[1]   找到后把找到的entry 复制给existing
+        idx = hash & d->ht[table].sizemask;//取余
         /* Search if this slot does not already contain the given key */
         he = d->ht[table].table[idx];
         while(he) {
