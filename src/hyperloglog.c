@@ -194,7 +194,7 @@ struct hllhdr {
 #define HLL_P 14 /* The greater is P, the smaller the error. */
 #define HLL_Q (64-HLL_P) /* The number of bits of the hash value used for
                             determining the number of leading zeros. */
-#define HLL_REGISTERS (1<<HLL_P) /* With P=14, 16384 registers. */
+#define HLL_REGISTERS (1<<HLL_P) /* With P=14, 16384 registers. 前14位代表桶号，2的14次方=16384 */
 #define HLL_P_MASK (HLL_REGISTERS-1) /* Mask to index register. */
 #define HLL_BITS 6 /* Enough to count up to 63 leading zeroes. */
 #define HLL_REGISTER_MAX ((1<<HLL_BITS)-1)

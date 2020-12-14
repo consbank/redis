@@ -43,7 +43,7 @@
 
 /* Return the required encoding for the provided value. */
 static uint8_t _intsetValueEncoding(int64_t v) {
-    if (v < INT32_MIN || v > INT32_MAX)
+    if (v < INT32_MIN || v > INT32_MAX)  //这个区间没有问题，小于min是对的
         return INTSET_ENC_INT64;
     else if (v < INT16_MIN || v > INT16_MAX)
         return INTSET_ENC_INT32;
@@ -101,7 +101,7 @@ intset *intsetNew(void) {
     return is;
 }
 
-/* Resize the intset */
+/* Resize the intset 扩容 */
 static intset *intsetResize(intset *is, uint32_t len) {
     uint32_t size = len*intrev32ifbe(is->encoding);
     is = zrealloc(is,sizeof(intset)+size);
@@ -132,7 +132,7 @@ static uint8_t intsetSearch(intset *is, int64_t value, uint32_t *pos) {
         }
     }
 
-    while(max >= min) {
+    while(max >= min) {//二分查找
         mid = ((unsigned int)min + (unsigned int)max) >> 1;
         cur = _intsetGet(is,mid);
         if (value > cur) {
@@ -166,13 +166,14 @@ static intset *intsetUpgradeAndAdd(intset *is, int64_t value) {
 
     /* Upgrade back-to-front so we don't overwrite values.
      * Note that the "prepend" variable is used to make sure we have an empty
-     * space at either the beginning or the end of the intset. */
+     * space at either the beginning or the end of the intset. 
+     * 有后向前更新元素*/
     while(length--)
         _intsetSet(is,length+prepend,_intsetGetEncoded(is,length,curenc));
 
     /* Set the value at the beginning or the end. */
     if (prepend)
-        _intsetSet(is,0,value);
+        _intsetSet(is,0,value); //如果value是负数，就插入到头节点吗，intset到底是不是有序的？  //解释：注意是update，value是在curr元素范围之外才升级，所以必然是头插或者尾插
     else
         _intsetSet(is,intrev32ifbe(is->length),value);
     is->length = intrev32ifbe(intrev32ifbe(is->length)+1);
@@ -216,7 +217,7 @@ intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
         /* Abort if the value is already present in the set.
          * This call will populate "pos" with the right position to insert
          * the value when it cannot be found. */
-        if (intsetSearch(is,value,&pos)) {
+        if (intsetSearch(is,value,&pos)) {//可以看出插入的元素是有序的
             if (success) *success = 0;
             return is;
         }
@@ -244,7 +245,7 @@ intset *intsetRemove(intset *is, int64_t value, int *success) {
 
         /* Overwrite value with tail and update length */
         if (pos < (len-1)) intsetMoveTail(is,pos+1,pos);
-        is = intsetResize(is,len-1);
+        is = intsetResize(is,len-1);//缩容
         is->length = intrev32ifbe(len-1);
     }
     return is;
@@ -258,7 +259,7 @@ uint8_t intsetFind(intset *is, int64_t value) {
 
 /* Return random member */
 int64_t intsetRandom(intset *is) {
-    return _intsetGet(is,rand()%intrev32ifbe(is->length));
+    return _intsetGet(is,rand()%intrev32ifbe(is->length));//简单粗暴，随机返回一个length的位置
 }
 
 /* Get the value at the given position. When this position is
